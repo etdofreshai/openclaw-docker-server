@@ -1,0 +1,17 @@
+services:
+  openclaw-server:
+    build:
+      context: .
+    image: openclaw-docker-server:local
+    container_name: openclaw-server
+    restart: unless-stopped
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "if [ \"$$OPENCLAW_RUN_MODE\" = \"gateway\" ]; then node -e \"fetch('http://127.0.0.1:' + (process.env.OPENCLAW_GATEWAY_PORT || '18789') + '/healthz').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"; else pgrep -f \"sleep 3600\" >/dev/null; fi",
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
