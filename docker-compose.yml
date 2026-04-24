@@ -1,17 +1,27 @@
 services:
   openclaw-server:
-    build:
-      context: .
-    image: openclaw-docker-server:local
+    image: ${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:latest}
     container_name: openclaw-server
     restart: unless-stopped
+    environment:
+      TZ: ${TZ:-America/Chicago}
+      OPENCLAW_GATEWAY_BIND: ${OPENCLAW_GATEWAY_BIND:-lan}
+      OPENCLAW_GATEWAY_PORT: ${OPENCLAW_GATEWAY_PORT:-18789}
     healthcheck:
       test:
         [
           "CMD-SHELL",
-          "if [ \"$$OPENCLAW_RUN_MODE\" = \"gateway\" ]; then node -e \"fetch('http://127.0.0.1:' + (process.env.OPENCLAW_GATEWAY_PORT || '18789') + '/healthz').then((r)=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\"; else pgrep -f \"sleep 3600\" >/dev/null; fi",
+          "TOKEN=$$(node -e 'const fs=require(\"fs\"); const config=JSON.parse(fs.readFileSync(\"/home/node/.openclaw/openclaw.json\", \"utf8\")); process.stdout.write(config.gateway?.auth?.token || \"\")') && node dist/index.js health --token \"$$TOKEN\" >/dev/null",
         ]
       interval: 30s
-      timeout: 5s
+      timeout: 10s
       retries: 5
-      start_period: 20s
+      start_period: 60s
+    command:
+      - node
+      - dist/index.js
+      - gateway
+      - --bind
+      - ${OPENCLAW_GATEWAY_BIND:-lan}
+      - --port
+      - ${OPENCLAW_GATEWAY_PORT:-18789}

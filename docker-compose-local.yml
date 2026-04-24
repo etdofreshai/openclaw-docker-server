@@ -1,0 +1,11 @@
+services:
+  openclaw-server:
+    container_name: openclaw-local-server
+    ports:
+      - "${OPENCLAW_HOST_PORT:-18791}:${OPENCLAW_GATEWAY_PORT:-18791}"
+    volumes:
+      - openclaw-data:/home/node
+
+volumes:
+  openclaw-data:
+    name: openclaw-docker-server_openclaw-local-data

@@ -1,102 +1,78 @@
 # openclaw-docker-server
 
-This repo gives OpenClaw a persistent-volume runtime instead of baking the OpenClaw install into the image.
+Docker Compose setup for running the official OpenClaw container with persistent storage.
 
-The image is intentionally thin:
+The base compose file uses:
 
-- base OS + Node + a few utilities
-- an idempotent entrypoint
-- a `/data` mount that keeps the OpenClaw CLI, home/config, workspace, app caches, and bootstrap markers
+- `ghcr.io/openclaw/openclaw:latest`
+- OpenClaw gateway bind mode `lan`
+- an authenticated healthcheck that reads the generated gateway token from the persisted config
 
-That means container restarts are fast, first boot can perform installation and setup, and later boots skip work that is already complete.
-
-## Flow
-
-When `openclaw-server` starts, the entrypoint does three phases:
-
-1. `install`
-
-- Installs `${OPENCLAW_NPM_SPEC}` into `/data/openclaw`
-- Skips if `/data/openclaw/bin/openclaw` already exists and the requested npm spec has not changed
-
-2. `setup-once`
-
-- Runs `OPENCLAW_SETUP_CMD` once if provided
-- Skips once `/data/state/setup-complete` exists
-
-3. `run`
-
-- Starts OpenClaw gateway by default
-- Can switch to a long-lived shell container or a custom command
-- Watches gateway health and locally restarts it if it stays down for 5 minutes
-
-## Persistent layout
-
-Everything below lives in the `/data` mount you provide in Dokploy:
-
-- `/data/openclaw`: npm global prefix containing the OpenClaw CLI install
-- `/data/home/.openclaw`: OpenClaw home, config, sessions, installed apps/skills, and workspace data
-- `/data/apps`: extra app caches such as Playwright browsers
-- `/data/state`: install/setup markers and requested npm spec
-
-## Quick start
+## Quick Start
 
 ```bash
-docker compose up -d --build
+docker compose up -d
 docker compose logs -f openclaw-server
 ```
 
-For Dokploy, mount your persistent storage at `/data` and set runtime environment there. On first boot, the container installs OpenClaw into that mount. On later boots, it reuses that install.
+The base [docker-compose.yml](C:/Users/etgarcia/code/workspace/repos/openclaw-docker-server/docker-compose.yml) does not publish ports. That keeps it deployment-friendly for Dokploy/Traefik-style routing.
 
-## First-time OpenClaw setup
+## Local Run
 
-The container bootstrap is automatic, but OpenClaw onboarding is still your call because it is usually interactive and environment-specific.
+Use the local override to publish the gateway on `18791`, avoiding a local or WSL OpenClaw server already using `18789`.
 
-Run it once against the persisted volume:
-
-```bash
-docker compose exec openclaw-server /data/openclaw/bin/openclaw onboard
+```powershell
+docker compose -f docker-compose.yml -f docker-compose-local.yml up -d
 ```
 
-If you want the container to just stay alive as an OS-like runtime while you exec in manually, set:
+Open:
 
-```env
-OPENCLAW_RUN_MODE=shell
+```text
+http://127.0.0.1:18791/
 ```
 
-Then use:
+The local override reuses the named Docker volume:
 
-```bash
-docker compose exec openclaw-server bash
+```text
+openclaw-docker-server_openclaw-local-data
 ```
 
-## Useful commands
+The volume mount is intentionally local-only. Dokploy or another deployment target should provide its own persistent storage for `/home/node`.
+
+## First-Time Config
+
+If the gateway starts without config, initialize it once against the persisted volume:
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose-local.yml stop openclaw-server
+docker compose -f docker-compose.yml -f docker-compose-local.yml run --rm --no-deps --user root --entrypoint sh openclaw-server -lc "mkdir -p /home/node/.openclaw && chown -R node:node /home/node"
+docker compose -f docker-compose.yml -f docker-compose-local.yml run --rm --no-deps --entrypoint node openclaw-server dist/index.js config set gateway.mode local
+docker compose -f docker-compose.yml -f docker-compose-local.yml run --rm --no-deps --entrypoint node openclaw-server dist/index.js config set gateway.bind lan
+docker compose -f docker-compose.yml -f docker-compose-local.yml run --rm --no-deps --entrypoint node openclaw-server dist/index.js config set gateway.port 18791 --strict-json
+docker compose -f docker-compose.yml -f docker-compose-local.yml up -d
+```
+
+To print the dashboard URL without opening a browser:
+
+```powershell
+docker compose -f docker-compose.yml -f docker-compose-local.yml exec openclaw-server node dist/index.js dashboard --no-open
+```
+
+## Useful Commands
 
 ```bash
 docker compose ps
 docker compose logs -f openclaw-server
 docker compose exec openclaw-server bash
-docker compose exec openclaw-server /data/openclaw/bin/openclaw --version
+docker compose exec openclaw-server node dist/index.js health --token "<token>"
 ```
 
-## Current design choices
+## Notes
 
-- OpenClaw is installed via `npm install -g` into a persistent prefix instead of being baked into the image.
-- The default run mode is `gateway` so the container is useful immediately.
-- A `shell` mode is available if you want a pure always-running host container.
-- OS packages still belong in the image. Persistence is aimed at OpenClaw itself, OpenClaw state, and user-installed runtime data under `/data`.
-- The gateway watchdog uses the local `/healthz` endpoint instead of tracking one PID, so OpenClaw can respawn internally without being treated as down.
+- Use bind mode values such as `lan`, `loopback`, `tailnet`, `auto`, or `custom`, not raw hosts like `0.0.0.0`.
+- OpenClaw stores config, auth, workspace data, sessions, and installed runtime state under `/home/node/.openclaw`.
+- The official Docker docs describe the GHCR image and `/home/node` persistence model.
 
-## Research notes
+Official reference:
 
-This repo shape is based on the current official OpenClaw install and Docker guidance:
-
-- The install docs recommend `npm install -g openclaw@latest` or `openclaw onboard --install-daemon` for standard installs.
-- The installer internals docs describe non-interactive automation paths and a local-prefix installer for automation.
-- The Docker docs recommend persisting OpenClaw home data and show the gateway running inside Docker with `/home/node/.openclaw` mounted.
-
-Official references:
-
-- [Install docs](https://docs.openclaw.ai/install/index)
-- [Installer internals](https://docs.openclaw.ai/install/installer)
-- [Docker docs](https://docs.openclaw.ai/install/docker)
+- [OpenClaw Docker docs](https://docs.openclaw.ai/install/docker)
