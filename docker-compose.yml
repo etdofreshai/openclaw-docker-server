@@ -11,6 +11,7 @@ services:
       OPENCLAW_ALLOW_UNCONFIGURED: ${OPENCLAW_ALLOW_UNCONFIGURED:-false}
     volumes:
       - openclaw-data:/home/node
+      - /mnt/openclaw-shared:/mnt/openclaw-shared
     healthcheck:
       test:
         [

@@ -6,6 +6,7 @@ The base compose file uses:
 
 - `ghcr.io/openclaw/openclaw:latest`
 - a Docker named volume mounted at `/home/node`
+- a host bind mount from `/mnt/openclaw-shared` to `/mnt/openclaw-shared`
 - OpenClaw gateway bind mode `lan`
 - an authenticated healthcheck that reads the generated gateway token from the persisted config
 
