@@ -9,6 +9,8 @@ The base compose file uses:
 - OpenClaw gateway bind mode `lan`
 - an authenticated healthcheck that reads the generated gateway token from the persisted config
 
+Set `OPENCLAW_ALLOW_UNCONFIGURED=true` to start the gateway with OpenClaw's `--allow-unconfigured` flag before first-time config exists.
+
 ## Quick Start
 
 ```bash

@@ -7,26 +7,32 @@ services:
       TZ: ${TZ:-America/Chicago}
       OPENCLAW_GATEWAY_BIND: ${OPENCLAW_GATEWAY_BIND:-lan}
       OPENCLAW_GATEWAY_PORT: ${OPENCLAW_GATEWAY_PORT:-18789}
+      OPENCLAW_ALLOW_UNCONFIGURED: ${OPENCLAW_ALLOW_UNCONFIGURED:-false}
     volumes:
       - openclaw-data:/home/node
     healthcheck:
       test:
         [
           "CMD-SHELL",
-          "TOKEN=$$(node -e 'const fs=require(\"fs\"); const config=JSON.parse(fs.readFileSync(\"/home/node/.openclaw/openclaw.json\", \"utf8\")); process.stdout.write(config.gateway?.auth?.token || \"\")') && node dist/index.js health --token \"$$TOKEN\" >/dev/null",
+          "if [ \"$${OPENCLAW_ALLOW_UNCONFIGURED:-false}\" = \"true\" ]; then node -e 'fetch(\"http://127.0.0.1:\" + (process.env.OPENCLAW_GATEWAY_PORT || \"18789\") + \"/healthz\").then((r)=>process.exit(r.status < 500 ? 0 : 1)).catch(()=>process.exit(1))'; else TOKEN=$$(node -e 'const fs=require(\"fs\"); const config=JSON.parse(fs.readFileSync(\"/home/node/.openclaw/openclaw.json\", \"utf8\")); process.stdout.write(config.gateway?.auth?.token || \"\")') && node dist/index.js health --token \"$$TOKEN\" >/dev/null; fi",
         ]
       interval: 30s
       timeout: 10s
       retries: 5
       start_period: 60s
     command:
-      - node
-      - dist/index.js
-      - gateway
-      - --bind
-      - ${OPENCLAW_GATEWAY_BIND:-lan}
-      - --port
-      - ${OPENCLAW_GATEWAY_PORT:-18789}
+      - sh
+      - -lc
+      - |
+        set -eu
+        allow_unconfigured=""
+        case "$${OPENCLAW_ALLOW_UNCONFIGURED:-false}" in
+          1|true|TRUE|yes|YES|on|ON) allow_unconfigured="--allow-unconfigured" ;;
+        esac
+        exec node dist/index.js gateway \
+          --bind "$${OPENCLAW_GATEWAY_BIND:-lan}" \
+          --port "$${OPENCLAW_GATEWAY_PORT:-18789}" \
+          $$allow_unconfigured
 
 volumes:
   openclaw-data:
