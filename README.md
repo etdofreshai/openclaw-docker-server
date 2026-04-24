@@ -5,6 +5,7 @@ Docker Compose setup for running the official OpenClaw container with persistent
 The base compose file uses:
 
 - `ghcr.io/openclaw/openclaw:latest`
+- a Docker named volume mounted at `/home/node`
 - OpenClaw gateway bind mode `lan`
 - an authenticated healthcheck that reads the generated gateway token from the persisted config
 
@@ -31,13 +32,11 @@ Open:
 http://127.0.0.1:18789/
 ```
 
-The local override reuses the named Docker volume:
+The compose stack uses the named Docker volume:
 
 ```text
-openclaw-docker-server_openclaw-local-data
+openclaw-docker-server_openclaw-data
 ```
-
-The volume mount is intentionally local-only. Dokploy or another deployment target should provide its own persistent storage for `/home/node`.
 
 ## First-Time Config
 
