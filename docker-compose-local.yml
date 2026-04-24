@@ -2,7 +2,7 @@ services:
   openclaw-server:
     container_name: openclaw-local-server
     ports:
-      - "${OPENCLAW_HOST_PORT:-18791}:${OPENCLAW_GATEWAY_PORT:-18791}"
+      - "${OPENCLAW_HOST_PORT:-18791}:${OPENCLAW_GATEWAY_PORT:-18789}"
     volumes:
       - openclaw-data:/home/node
 
