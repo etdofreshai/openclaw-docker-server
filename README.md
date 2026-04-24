@@ -4,7 +4,7 @@ Docker Compose setup for running the official OpenClaw container with persistent
 
 The base compose file uses:
 
-- `ghcr.io/openclaw/openclaw:2026.4.23`
+- `ghcr.io/openclaw/openclaw:latest`
 - a Docker named volume mounted at `/home/node`
 - a host bind mount from `/mnt/openclaw-shared` to `/mnt/openclaw-shared`
 - OpenClaw gateway bind mode `lan`

@@ -1,6 +1,6 @@
 services:
   openclaw-server:
-    image: ${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:2026.4.23}
+    image: ${OPENCLAW_IMAGE:-ghcr.io/openclaw/openclaw:latest}
     container_name: openclaw-server
     privileged: true
     restart: unless-stopped
